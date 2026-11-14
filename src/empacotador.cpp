@@ -45,7 +45,16 @@ void fixar_peca(Grid& folha, const Grid& peca, int pos_x, int pos_y, int id_mold
 }
 
 // adcionar:
-// void remover_peca(Grid& folha, const Grid& peca, int pos_x, int pos_y, int id_molde){}
+void remover_peca(Grid& folha, const Grid& peca, int pos_x, int pos_y){
+    // fazer o oposto da funão fixar_peca, zerando o valor 
+    for (int i = 0; i < peca.get_comprimento(); ++i) {
+        for (int j = 0; j < peca.get_largura(); ++j) {
+            if (peca.get_valor(j, i) != 0) {
+                folha.set_valor(pos_x + j, pos_y + i, 0);
+            }
+        }
+    }
+}
 
 
 // remover essa função e adcionar versão exata
