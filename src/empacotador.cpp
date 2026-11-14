@@ -69,40 +69,43 @@ int calcular_comprimento_ocupado(const Grid& folha){
     return 0;
 }
 
+void branch_and_bound_simples(Grid& folha, const std::vector<Componente>& componentes, int nivel, 
+    int& melhor_comprimento, Grid& melhor_folha) {
 
-// remover essa função e adcionar versão exata
-// void alocar_componente(Grid& folha, const Componente& comp, int& comprimento_usado) {
-//     int pos_x = folha.get_largura() - comp.grid.get_largura();
-//     int pos_y = comprimento_usado;
+    // caso base
+    if (nivel == static_cast<int>(componentes.size())){
+        int comprimento_atual = calcular_comprimento_ocupado(folha);
+        // ver se é melhor do  que o melhor comprimento global
+        if (comprimento_atual < melhor_comprimento){
+            melhor_comprimento = comprimento_atual;
+            melhor_folha = folha;
+        }
+        return;
+    }
 
-//     // ESTÁGIO 1: Retângulo envolvente
-//     bool moveu = true;
-//     while (moveu) {
-//         moveu = false;
-//         while (pos_y > 0 && !colide_retangulo(folha, comp.grid, pos_x, pos_y - 1)) {
-//             pos_y--;
-//             moveu = true;
-//         }
-//         while (pos_x > 0 && !colide_retangulo(folha, comp.grid, pos_x - 1, pos_y)) {
-//             pos_x--;
-//             moveu = true;
-//         }
-//     }
+    const Componente& comp = componentes[nivel];
+    int comprimento_peca = comp.grid.get_comprimento();
+    int larg_peca = comp.grid.get_largura();
 
-//     // ESTÁGIO 2: Forma poligonal real
-//     moveu = true;
-//     while (moveu) {
-//         moveu = false;
-//         while (pos_y > 0 && !colide_poligono(folha, comp.grid, pos_x, pos_y - 1)) {
-//             pos_y--;
-//             moveu = true;
-//         }
-//         while (pos_x > 0 && !colide_poligono(folha, comp.grid, pos_x - 1, pos_y)) {
-//             pos_x--;
-//             moveu = true;
-//         }
-//     }
+    // pecorrer as soluções possiveis 
+    for (int pos_y = 0; pos_y <= folha.get_comprimento() - comprimento_peca; ++pos_y){
+        // caso de poda
+        if (pos_y + comprimento_peca >= melhor_comprimento){
+            break;
+        }
 
-//     fixar_peca(folha, comp.grid, pos_x, pos_y, comp.id_molde);
-//     comprimento_usado = std::max(comprimento_usado, pos_y + comp.grid.get_comprimento());
-// }
+        // tentar as proximas opções
+        for (int pos_x = 0; pos_x <= folha.get_largura()- larg_peca; ++pos_x){
+            if (!colide_poligono(folha, comp.grid, pos_x, pos_y)){
+                // branch
+                fixar_peca(folha, comp.grid, pos_x, pos_y, comp.id_molde);
+
+                // proxima peça 
+                branch_and_bound_simples(folha, componentes, nivel + 1, melhor_comprimento, melhor_folha);
+
+                // backtrack
+                remover_peca(folha, comp.grid, pos_x, pos_y);
+            }
+        }
+    }
+}
