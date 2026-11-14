@@ -44,7 +44,6 @@ void fixar_peca(Grid& folha, const Grid& peca, int pos_x, int pos_y, int id_mold
     }
 }
 
-// adcionar:
 void remover_peca(Grid& folha, const Grid& peca, int pos_x, int pos_y){
     // fazer o oposto da funão fixar_peca, zerando o valor 
     for (int i = 0; i < peca.get_comprimento(); ++i) {
@@ -54,6 +53,20 @@ void remover_peca(Grid& folha, const Grid& peca, int pos_x, int pos_y){
             }
         }
     }
+}
+
+int calcular_comprimento_ocupado(const Grid& folha){
+    // essa função será usada para avaliar se a solução atual é 
+    // melhor do que a melhor já encontrada
+    // varre a folha até a primeira celula que encontrar ( o pico)
+    for (int y = folha.get_comprimento() - 1; y >= 0; --y) {
+        for (int x = 0; x < folha.get_largura(); ++x) {
+            if (folha.get_valor(x, y) != 0) {
+                return y + 1; // altura máxima alcançada
+            }
+        }
+    }
+    return 0;
 }
 
 
