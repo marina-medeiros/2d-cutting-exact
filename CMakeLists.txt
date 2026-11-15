@@ -14,7 +14,7 @@ find_package(OpenMP)
 
 add_executable(dbpb
     src/main_dbpb.cpp
-    src/bitset_din.cpp
+    src/matriz.cpp
     src/instancia_db.cpp
     src/variaveis.cpp
     src/conflitos.cpp

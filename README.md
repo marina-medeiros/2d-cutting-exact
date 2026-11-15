@@ -29,7 +29,6 @@ cmake --build build
 ├── config/config.txt
 ├── dataset/
 ├── include/
-│   ├── bitset_din.h
 │   ├── conflitos.h
 │   ├── conversor.h
 │   ├── dbpb.h
@@ -38,10 +37,10 @@ cmake --build build
 │   ├── grid.h
 │   ├── instancia_db.h
 │   ├── io.h
+│   ├── matriz.h
 │   ├── molde.h
 │   └── variaveis.h
 └── src/
-    ├── bitset_din.cpp
     ├── conflitos.cpp
     ├── conversor.cpp
     ├── dbpb.cpp
@@ -51,6 +50,7 @@ cmake --build build
     ├── instancia_db.cpp
     ├── io.cpp
     ├── main_dbpb.cpp
+    ├── matriz.cpp
     ├── molde.cpp
     └── variaveis.cpp
 ```

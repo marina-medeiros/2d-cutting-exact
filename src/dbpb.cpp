@@ -1,6 +1,6 @@
 #include "dbpb.h"
 
-DBPB::DBPB(const InstanciaDB& inst, const Variaveis& vars, const std::vector<BitsetDin>& pi)
+DBPB::DBPB(const InstanciaDB& inst, const Variaveis& vars, const Matriz& pi)
     : inst(inst), vars(vars), pi(pi), L_inc(0), otimo(false) {}
 
 void DBPB::definir_limites(int lb, int ub) {
@@ -16,7 +16,7 @@ ResultadoDBPB DBPB::resolver(double limite_tempo_s) {
 void DBPB::ramificar(int nivel, int L_parcial, ContextoThread& ctx) {
 }
 
-bool DBPB::verificar_adiante(const BitsetDin& phi, int nivel) const {
+bool DBPB::verificar_adiante(const uint8_t* phi, int nivel) const {
     return false;
 }
 

@@ -77,9 +77,9 @@ bool ler_molde(std::ifstream& arquivo, Molde& molde) {
     arquivo >> m >> m >> m >> aux_num_vertices;
     arquivo >> m >> m;
 
-    int num_vertices = stoi(aux_num_vertices);
-    molde.id = stoi(aux_id);
-    molde.quant = stoi(aux_quant);
+    int num_vertices = stod(aux_num_vertices);
+    molde.id = stod(aux_id);
+    molde.quant = stod(aux_quant);
 
     double min_x = std::numeric_limits<double>::max();
     double max_x = std::numeric_limits<double>::lowest();
@@ -94,8 +94,8 @@ bool ler_molde(std::ifstream& arquivo, Molde& molde) {
 
         arquivo >> aux_px >> aux_py;
 
-        p.x = stoi(aux_px);
-        p.y = stoi(aux_py);
+        p.x = stod(aux_px);
+        p.y = stod(aux_py);
 
         molde.vertices.push_back(p);
 

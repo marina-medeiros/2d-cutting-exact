@@ -72,7 +72,7 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
     }
     arquivo.close();
 
-    // 1. Ordenação decrescente pela área do retângulo envolvente (Acelera a poda)
+    // 1. Ordenação decrescente pela área do retângulo envolvente 
     std::sort(lista_pecas.begin(), lista_pecas.end(), [](const Componente& a, const Componente& b) {
         return a.area_retangulo > b.area_retangulo;
     });
@@ -81,7 +81,7 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
     int largura_folha_grid = std::ceil(LARGURA_FOLHA_REAL * ESCALA);
     Grid folha(largura_folha_grid, soma_comprimentos_grid + 10);
 
-    // 3. obter limite superior inicial (Sem usar Heurística)
+    // 3. obter limite superior inicial 
     int limite_superior_trivial = 0;
     for (const auto& peca : lista_pecas) {
         limite_superior_trivial += peca.grid.get_comprimento();

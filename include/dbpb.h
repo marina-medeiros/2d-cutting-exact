@@ -3,10 +3,11 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <mutex>
 #include <vector>
-#include "bitset_din.h"
 #include "instancia_db.h"
+#include "matriz.h"
 #include "variaveis.h"
 
 struct ResultadoDBPB {
@@ -20,7 +21,7 @@ struct ResultadoDBPB {
 };
 
 struct ContextoThread {
-    std::vector<BitsetDin> phi;
+    Matriz phi;
     std::vector<int> x;
     long long nos = 0;
 };
@@ -29,9 +30,9 @@ class DBPB {
 private:
     const InstanciaDB& inst;
     const Variaveis& vars;
-    const std::vector<BitsetDin>& pi;
+    const Matriz& pi;
 
-    BitsetDin nao_dominadas;
+    std::vector<uint8_t> nao_dominadas;
     std::vector<int> x_inc;
     std::atomic<int> L_inc;
     std::atomic<bool> otimo;
@@ -42,12 +43,12 @@ private:
     double tempo_melhor_s = 0.0;
 
     void ramificar(int nivel, int L_parcial, ContextoThread& ctx);
-    bool verificar_adiante(const BitsetDin& phi, int nivel) const;
+    bool verificar_adiante(const uint8_t* phi, int nivel) const;
     void atualizar_incumbente(const std::vector<int>& x, int L);
     bool tempo_esgotado() const;
 
 public:
-    DBPB(const InstanciaDB& inst, const Variaveis& vars, const std::vector<BitsetDin>& pi);
+    DBPB(const InstanciaDB& inst, const Variaveis& vars, const Matriz& pi);
 
     void definir_limites(int lb, int ub);
     void definir_incumbente(const std::vector<int>& solucao, int L);
