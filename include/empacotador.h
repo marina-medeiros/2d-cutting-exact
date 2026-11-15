@@ -17,6 +17,7 @@ void remover_peca(Grid& folha, const Grid& peca, int pos_x, int pos_y);
 int calcular_comprimento_ocupado(const Grid& folha);
 int limite_inferior_trivial(const std::vector<Componente>& componentes, int largura_folha);
 void branch_and_bound_simples(Grid& folha, const std::vector<Componente>& componentes, int nivel,
-    int& melhor_comprimento, Grid& melhor_folha, int limite_inferior);
+    int& melhor_comprimento, Grid& melhor_folha, int limite_inferior,
+    int y_anterior = 0, int x_anterior = -1);
 
 #endif // EMPACOTADOR_HPP

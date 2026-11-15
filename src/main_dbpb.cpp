@@ -76,7 +76,8 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
 
     // 1. Ordenação decrescente pela área do retângulo envolvente 
     std::sort(lista_pecas.begin(), lista_pecas.end(), [](const Componente& a, const Componente& b) {
-        return a.area_retangulo > b.area_retangulo;
+        if (a.area_retangulo != b.area_retangulo) return a.area_retangulo > b.area_retangulo;
+        return a.id_molde < b.id_molde;
     });
 
     // 2. Cria a folha de tecido vazia

@@ -86,7 +86,8 @@ int limite_inferior_trivial(const std::vector<Componente>& componentes, int larg
 }
 
 void branch_and_bound_simples(Grid& folha, const std::vector<Componente>& componentes, int nivel,
-    int& melhor_comprimento, Grid& melhor_folha, int limite_inferior) {
+    int& melhor_comprimento, Grid& melhor_folha, int limite_inferior,
+    int y_anterior, int x_anterior) {
 
     if (melhor_comprimento <= limite_inferior) return;
 
@@ -104,23 +105,25 @@ void branch_and_bound_simples(Grid& folha, const std::vector<Componente>& compon
     const Componente& comp = componentes[nivel];
     int comprimento_peca = comp.grid.get_comprimento();
     int larg_peca = comp.grid.get_largura();
+    bool mesma_peca = nivel > 0 && comp.id_molde == componentes[nivel - 1].id_molde;
 
-    // pecorrer as soluções possiveis 
-    for (int pos_y = 0; pos_y <= folha.get_comprimento() - comprimento_peca; ++pos_y){
+    // pecorrer as soluções possiveis
+    for (int pos_y = mesma_peca ? y_anterior : 0; pos_y <= folha.get_comprimento() - comprimento_peca; ++pos_y){
         // caso de poda
         if (pos_y + comprimento_peca >= melhor_comprimento){
             break;
         }
 
         // tentar as proximas opções
-        for (int pos_x = 0; pos_x <= folha.get_largura()- larg_peca; ++pos_x){
+        int x_inicial = (mesma_peca && pos_y == y_anterior) ? x_anterior + 1 : 0;
+        for (int pos_x = x_inicial; pos_x <= folha.get_largura()- larg_peca; ++pos_x){
             if (!colide_poligono(folha, comp.grid, pos_x, pos_y)){
                 // branch
                 fixar_peca(folha, comp.grid, pos_x, pos_y, comp.id_molde);
 
                 // proxima peça 
                 branch_and_bound_simples(folha, componentes, nivel + 1, melhor_comprimento, melhor_folha,
-                                         limite_inferior);
+                                         limite_inferior, pos_y, pos_x);
 
                 // backtrack
                 remover_peca(folha, comp.grid, pos_x, pos_y);
