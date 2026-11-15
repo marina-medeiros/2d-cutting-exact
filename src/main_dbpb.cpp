@@ -32,6 +32,8 @@ struct Resultado {
     double comprimento_real = 0.0;
     double eficiencia = 0.0;
     double tempo_ms = 0.0;
+    int lb = 0;
+    bool parou_no_lb = false;
 };
 
 bool executar_instancia(const std::string& caminho, const std::string& nome,
@@ -88,13 +90,16 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
     }
     std::cout << "(Trivial: " << limite_superior_trivial << ") ";
 
+    const int lb = limite_inferior_trivial(lista_pecas, largura_folha_grid);
+    std::cout << "(LB: " << lb << ") ";
+
     // 4. Branch-and-Bound Simples
     // Usamos o limite trivial como pior caso inicial
-    int melhor_comprimento_global = limite_superior_trivial; 
+    int melhor_comprimento_global = limite_superior_trivial + 1;
     Grid melhor_folha = folha; // Vai guardar a solução ótima geométrica
 
     // Inicia a recursão exata
-    branch_and_bound_simples(folha, lista_pecas, 0, melhor_comprimento_global, melhor_folha);
+    branch_and_bound_simples(folha, lista_pecas, 0, melhor_comprimento_global, melhor_folha, lb);
 
     const auto fim = std::chrono::steady_clock::now();
 
@@ -110,6 +115,8 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
     resultado.eficiencia = static_cast<double>(area_total_ocupada_pelas_pecas) /
                            (static_cast<double>(largura_folha_grid) * melhor_comprimento_global) * 100.0;
     resultado.tempo_ms = std::chrono::duration<double, std::milli>(fim - inicio).count();
+    resultado.lb = lb;
+    resultado.parou_no_lb = (melhor_comprimento_global == lb);
 
     // 6. Exportar layout exato
     const std::string nome_ppm = dir_saida + "/layout_exato_" + nome + ".ppm";
@@ -122,14 +129,16 @@ std::string tabela_markdown(const std::vector<Resultado>& resultados) {
     std::ostringstream md;
     md << std::fixed;
     md << "| Instancia | Escala | Largura da folha | Total de pecas alocadas | Comprimento na grelha"
-          " | Comprimento real (C_L) | Eficiencia do layout | Tempo de execucao |\n";
-    md << "|---|---:|---:|---:|---:|---:|---:|---:|\n";
+          " | LB | Parada | Comprimento real (C_L) | Eficiencia do layout | Tempo de execucao |\n";
+    md << "|---|---:|---:|---:|---:|---:|---|---:|---:|---:|\n";
     for (const auto& r : resultados) {
         md << "| " << r.instancia
            << " | " << std::defaultfloat << std::setprecision(6) << r.escala
            << " | " << r.largura_folha_real << std::fixed
            << " | " << r.total_pecas
            << " | " << r.comprimento_grid << " celulas"
+           << " | " << r.lb
+           << " | " << (r.parou_no_lb ? "LB atingido" : "busca completa")
            << " | " << std::setprecision(2) << r.comprimento_real
            << " | " << std::setprecision(2) << r.eficiencia << "%"
            << " | " << std::setprecision(3) << r.tempo_ms << " ms |\n";

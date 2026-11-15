@@ -69,8 +69,26 @@ int calcular_comprimento_ocupado(const Grid& folha){
     return 0;
 }
 
-void branch_and_bound_simples(Grid& folha, const std::vector<Componente>& componentes, int nivel, 
-    int& melhor_comprimento, Grid& melhor_folha) {
+
+int limite_inferior_trivial(const std::vector<Componente>& componentes, int largura_folha) {
+    long long area = 0;
+    int maior = 0;
+    for (const auto& comp : componentes) {
+        for (int y = 0; y < comp.grid.get_comprimento(); ++y) {
+            for (int x = 0; x < comp.grid.get_largura(); ++x) {
+                if (comp.grid.get_valor(x, y) != 0) area++;
+            }
+        }
+        maior = std::max(maior, calcular_comprimento_ocupado(comp.grid));
+    }
+    int por_area = static_cast<int>((area + largura_folha - 1) / largura_folha);
+    return std::max(por_area, maior);
+}
+
+void branch_and_bound_simples(Grid& folha, const std::vector<Componente>& componentes, int nivel,
+    int& melhor_comprimento, Grid& melhor_folha, int limite_inferior) {
+
+    if (melhor_comprimento <= limite_inferior) return;
 
     // caso base
     if (nivel == static_cast<int>(componentes.size())){
@@ -101,10 +119,13 @@ void branch_and_bound_simples(Grid& folha, const std::vector<Componente>& compon
                 fixar_peca(folha, comp.grid, pos_x, pos_y, comp.id_molde);
 
                 // proxima peça 
-                branch_and_bound_simples(folha, componentes, nivel + 1, melhor_comprimento, melhor_folha);
+                branch_and_bound_simples(folha, componentes, nivel + 1, melhor_comprimento, melhor_folha,
+                                         limite_inferior);
 
                 // backtrack
                 remover_peca(folha, comp.grid, pos_x, pos_y);
+
+                if (melhor_comprimento <= limite_inferior) return;
             }
         }
     }
