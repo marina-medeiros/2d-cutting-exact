@@ -1,6 +1,8 @@
 #ifndef EMPACOTADOR_HPP
 #define EMPACOTADOR_HPP
 
+#include <atomic>
+#include <mutex>
 #include <vector>
 #include "grid.h"
 
@@ -16,8 +18,12 @@ void fixar_peca(Grid& folha, const Grid& peca, int pos_x, int pos_y, int id_mold
 void remover_peca(Grid& folha, const Grid& peca, int pos_x, int pos_y);
 int calcular_comprimento_ocupado(const Grid& folha);
 int limite_inferior_trivial(const std::vector<Componente>& componentes, int largura_folha);
+void alocar_componente(Grid& folha, const Componente& comp, int& comprimento_usado);
+int heuristica_bottom_left(Grid& folha, const std::vector<Componente>& componentes);
 void branch_and_bound_simples(Grid& folha, const std::vector<Componente>& componentes, int nivel,
-    int& melhor_comprimento, Grid& melhor_folha, int limite_inferior,
+    std::atomic<int>& melhor_comprimento, Grid& melhor_folha, std::mutex& mtx_melhor, int limite_inferior,
     int y_anterior = 0, int x_anterior = -1);
+void branch_and_bound_paralelo(const Grid& folha, const std::vector<Componente>& componentes,
+    std::atomic<int>& melhor_comprimento, Grid& melhor_folha, int limite_inferior);
 
 #endif // EMPACOTADOR_HPP

@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
+#include <atomic>
 
 
 #include "grid.h"
@@ -33,6 +34,7 @@ struct Resultado {
     double eficiencia = 0.0;
     double tempo_ms = 0.0;
     int lb = 0;
+    int ub = 0;
     bool parou_no_lb = false;
 };
 
@@ -84,23 +86,20 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
     int largura_folha_grid = std::ceil(LARGURA_FOLHA_REAL * ESCALA);
     Grid folha(largura_folha_grid, soma_comprimentos_grid + 10);
 
-    // 3. obter limite superior inicial 
-    int limite_superior_trivial = 0;
-    for (const auto& peca : lista_pecas) {
-        limite_superior_trivial += peca.grid.get_comprimento();
-    }
-    std::cout << "(Trivial: " << limite_superior_trivial << ") ";
-
     const int lb = limite_inferior_trivial(lista_pecas, largura_folha_grid);
     std::cout << "(LB: " << lb << ") ";
 
-    // 4. Branch-and-Bound Simples
-    // Usamos o limite trivial como pior caso inicial
-    int melhor_comprimento_global = limite_superior_trivial + 1;
-    Grid melhor_folha = folha; // Vai guardar a solução ótima geométrica
+    // 3. obter limite superior inicial 
+    Grid melhor_folha = folha;
+    const int ub = heuristica_bottom_left(melhor_folha, lista_pecas);
+    std::cout << "(UB: " << ub << ") ";
 
-    // Inicia a recursão exata
-    branch_and_bound_simples(folha, lista_pecas, 0, melhor_comprimento_global, melhor_folha, lb);
+    // 4. Branch-and-Bound
+    std::atomic<int> melhor(ub);
+    if (ub > lb) {
+        branch_and_bound_paralelo(folha, lista_pecas, melhor, melhor_folha, lb);
+    }
+    const int melhor_comprimento_global = melhor.load();
 
     const auto fim = std::chrono::steady_clock::now();
 
@@ -117,6 +116,7 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
                            (static_cast<double>(largura_folha_grid) * melhor_comprimento_global) * 100.0;
     resultado.tempo_ms = std::chrono::duration<double, std::milli>(fim - inicio).count();
     resultado.lb = lb;
+    resultado.ub = ub;
     resultado.parou_no_lb = (melhor_comprimento_global == lb);
 
     // 6. Exportar layout exato
@@ -130,8 +130,8 @@ std::string tabela_markdown(const std::vector<Resultado>& resultados) {
     std::ostringstream md;
     md << std::fixed;
     md << "| Instancia | Escala | Largura da folha | Total de pecas alocadas | Comprimento na grelha"
-          " | LB | Parada | Comprimento real (C_L) | Eficiencia do layout | Tempo de execucao |\n";
-    md << "|---|---:|---:|---:|---:|---:|---|---:|---:|---:|\n";
+          " | LB | UB heuristica | Parada | Comprimento real (C_L) | Eficiencia do layout | Tempo de execucao |\n";
+    md << "|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|\n";
     for (const auto& r : resultados) {
         md << "| " << r.instancia
            << " | " << std::defaultfloat << std::setprecision(6) << r.escala
@@ -139,6 +139,7 @@ std::string tabela_markdown(const std::vector<Resultado>& resultados) {
            << " | " << r.total_pecas
            << " | " << r.comprimento_grid << " celulas"
            << " | " << r.lb
+           << " | " << r.ub
            << " | " << (r.parou_no_lb ? "LB atingido" : "busca completa")
            << " | " << std::setprecision(2) << r.comprimento_real
            << " | " << std::setprecision(2) << r.eficiencia << "%"
