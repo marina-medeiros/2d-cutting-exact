@@ -4,25 +4,18 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <vector>
 #include <cmath>
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <atomic>
-
+#include <thread>
 
 #include "grid.h"
 #include "molde.h"
 #include "empacotador.h"
 #include "conversor.h"
 #include "io.h"
-// #include "conflitos.h"
-// #include "conversor.h"
-// #include "dbpb.h"
-// #include "dbpb_lb.h"
-// #include "instancia_db.h"
-// #include "variaveis.h"
 
 struct Resultado {
     std::string instancia;
@@ -82,7 +75,7 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
         return a.id_molde < b.id_molde;
     });
 
-    // 2. Cria a folha de tecido vazia
+    // 2. Cria a folha de tecido vazia (com ceil para garantir que a grid cobre toda a largura real)
     int largura_folha_grid = std::ceil(LARGURA_FOLHA_REAL * ESCALA);
     Grid folha(largura_folha_grid, soma_comprimentos_grid + 10);
 
@@ -94,14 +87,46 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
     const int ub = heuristica_bottom_left(melhor_folha, lista_pecas);
     std::cout << "(UB: " << ub << ") ";
 
-    // 4. Branch-and-Bound
+    // 4. Branch-and-Bound com monitorização em tempo real
     std::atomic<int> melhor(ub);
     if (ub > lb) {
+        std::atomic<bool> busca_concluida(false);
+        
+        // Thread independente para monitorizar o log
+        std::thread monitor([&]() {
+            auto inicio_monitor = std::chrono::steady_clock::now();
+            int ultimo_ub_reportado = melhor.load();
+            
+            while (!busca_concluida.load()) {
+                // Acorda a cada 10 segundos para não sobrecarregar o stdout
+                std::this_thread::sleep_for(std::chrono::seconds(10));
+                
+                if (busca_concluida.load()) break; // Sai imediatamente se o B&B tiver terminado
+                
+                int ub_atual = melhor.load();
+                auto agora = std::chrono::steady_clock::now();
+                double elapsado = std::chrono::duration<double>(agora - inicio_monitor).count();
+                
+                // Imprime apenas se houver melhoria ou para dar um "heartbeat" do tempo
+                std::cout << "\n[Monitor - " << nome << "] Tempo: " << std::fixed << std::setprecision(1) << elapsado 
+                          << "s | Melhor Comprimento (UB): " << ub_atual 
+                          << " | LB alvo: " << lb << std::flush;
+                          
+                ultimo_ub_reportado = ub_atual;
+            }
+        });
+
+        // Execução do algoritmo exato pesado
         branch_and_bound_paralelo(folha, lista_pecas, melhor, melhor_folha, lb);
+        
+        // Sinaliza a conclusão e aguarda o fecho da thread de monitorização
+        busca_concluida.store(true);
+        monitor.join();
     }
     const int melhor_comprimento_global = melhor.load();
 
     const auto fim = std::chrono::steady_clock::now();
+    std::cout << std::endl; // Garante quebra de linha após a conclusão
 
     // 5. Resultados
     resultado.instancia = nome;
@@ -129,8 +154,7 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
 std::string tabela_markdown(const std::vector<Resultado>& resultados) {
     std::ostringstream md;
     md << std::fixed;
-    md << "| Instancia | Escala | Largura da folha | Total de pecas alocadas | Comprimento na grelha"
-          " | LB | UB heuristica | Parada | Comprimento real (C_L) | Eficiencia do layout | Tempo de execucao |\n";
+    md << "| Instancia | Escala | Largura da folha | Total de pecas alocadas | Comprimento na grelha | LB | UB heuristica | Parada | Comprimento real (C_L) | Eficiencia do layout | Tempo de execucao |\n";
     md << "|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|\n";
     for (const auto& r : resultados) {
         md << "| " << r.instancia
