@@ -3,6 +3,14 @@
 Implementação em **C++** do algoritmo exato DB-PB (Lastra-Díaz & Ortuño, 2025) para o problema de Corte de Estoque Bidimensional Irregular.
 As peças são rasterizadas em uma grade; a heurística construtiva fornece o limite superior inicial.
 
+A lógica principal do algoritmo de empacotamento (Branch and Bound) está implementada no arquivo `src/empacotador.cpp`.
+
+O relatório completo está em `relatorio.pdf`.
+
+## Instâncias 
+
+Os casos de teste na pasta `dataset/` incluem instâncias adaptadas do repositório oficial do grupo [ESICUP (EURO Special Interest Group on Cutting and Packing)](https://github.com/ESICUP/datasets), além de instâncias sintéticas geradas para validação.
+
 ## Requisitos
 
 - CMake 3.10+
@@ -25,6 +33,7 @@ cmake --build build
 
 ```
 .
+├── relatorio.pdf
 ├── CMakeLists.txt
 ├── config/config.txt
 ├── dataset/
