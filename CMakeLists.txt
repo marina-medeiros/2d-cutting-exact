@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(raster-2d-cutting CXX)
+project(2d-cutting-exact CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,21 +9,27 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-add_executable(empacotador
-    src/main.cpp
+find_package(Threads REQUIRED)
+find_package(OpenMP)
+
+add_executable(dbpb
+    src/main_dbpb.cpp
+    src/matriz.cpp
+    src/instancia_db.cpp
+    src/variaveis.cpp
+    src/conflitos.cpp
+    src/dbpb.cpp
+    src/dbpb_lb.cpp
     src/grid.cpp
     src/molde.cpp
+    src/io.cpp
     src/empacotador.cpp
     src/conversor.cpp
-    src/io.cpp
 )
 
-target_include_directories(empacotador PRIVATE include)
+target_include_directories(dbpb PRIVATE include)
+target_link_libraries(dbpb PRIVATE Threads::Threads)
 
-# Converte todos os .ppm de um diretório (padrão: "outputs") para outputs/*.png
-add_executable(ppm2png
-    src/ppm2png.cpp
-    src/conversor.cpp
-)
-
-target_include_directories(ppm2png PRIVATE include)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(dbpb PRIVATE OpenMP::OpenMP_CXX)
+endif()

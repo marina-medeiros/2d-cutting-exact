@@ -1,12 +1,15 @@
+#include <string>
+#include <vector>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <vector>
 #include <cmath>
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
+#include <atomic>
+#include <thread>
 
 #include "grid.h"
 #include "molde.h"
@@ -23,6 +26,9 @@ struct Resultado {
     double comprimento_real = 0.0;
     double eficiencia = 0.0;
     double tempo_ms = 0.0;
+    int lb = 0;
+    int ub = 0;
+    bool parou_no_lb = false;
 };
 
 bool executar_instancia(const std::string& caminho, const std::string& nome,
@@ -63,36 +69,84 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
     }
     arquivo.close();
 
-    // 1. Ordenação decrescente pela área do retângulo envolvente
+    // 1. Ordenação decrescente pela área do retângulo envolvente 
     std::sort(lista_pecas.begin(), lista_pecas.end(), [](const Componente& a, const Componente& b) {
-        return a.area_retangulo > b.area_retangulo;
+        if (a.area_retangulo != b.area_retangulo) return a.area_retangulo > b.area_retangulo;
+        return a.id_molde < b.id_molde;
     });
 
-    // 2. Cria a folha de tecido
+    // 2. Cria a folha de tecido vazia (com ceil para garantir que a grid cobre toda a largura real)
     int largura_folha_grid = std::ceil(LARGURA_FOLHA_REAL * ESCALA);
     Grid folha(largura_folha_grid, soma_comprimentos_grid + 10);
 
-    // 3. Empacotamento em duas etapas
-    int comprimento_final_grid = 0;
-    for (const auto& peca : lista_pecas) {
-        alocar_componente(folha, peca, comprimento_final_grid);
+    const int lb = limite_inferior_trivial(lista_pecas, largura_folha_grid);
+    std::cout << "(LB: " << lb << ") ";
+
+    // 3. obter limite superior inicial 
+    Grid melhor_folha = folha;
+    const int ub = heuristica_bottom_left(melhor_folha, lista_pecas);
+    std::cout << "(UB: " << ub << ") ";
+
+    // 4. Branch-and-Bound com monitorização em tempo real
+    std::atomic<int> melhor(ub);
+    if (ub > lb) {
+        std::atomic<bool> busca_concluida(false);
+        
+        // Thread independente para monitorizar o log
+        std::thread monitor([&]() {
+            auto inicio_monitor = std::chrono::steady_clock::now();
+            int ultimo_ub_reportado = melhor.load();
+            
+            while (!busca_concluida.load()) {
+                // Acorda a cada 10 segundos para não sobrecarregar o stdout
+                std::this_thread::sleep_for(std::chrono::seconds(10));
+                
+                if (busca_concluida.load()) break; // Sai imediatamente se o B&B tiver terminado
+                
+                int ub_atual = melhor.load();
+                auto agora = std::chrono::steady_clock::now();
+                double elapsado = std::chrono::duration<double>(agora - inicio_monitor).count();
+                
+                // Imprime apenas se houver melhoria ou para dar um "heartbeat" do tempo
+                std::cout << "\n[Monitor - " << nome << "] Tempo: " << std::fixed << std::setprecision(1) << elapsado 
+                          << "s | Melhor Comprimento (UB): " << ub_atual 
+                          << " | LB alvo: " << lb << std::flush;
+                          
+                ultimo_ub_reportado = ub_atual;
+            }
+        });
+
+        // Execução do algoritmo exato pesado
+        branch_and_bound_paralelo(folha, lista_pecas, melhor, melhor_folha, lb);
+        
+        // Sinaliza a conclusão e aguarda o fecho da thread de monitorização
+        busca_concluida.store(true);
+        monitor.join();
     }
+    const int melhor_comprimento_global = melhor.load();
 
     const auto fim = std::chrono::steady_clock::now();
+    std::cout << std::endl; // Garante quebra de linha após a conclusão
 
-    // 4. Resultados
+    // 5. Resultados
     resultado.instancia = nome;
     resultado.escala = ESCALA;
     resultado.largura_folha_real = LARGURA_FOLHA_REAL;
     resultado.total_pecas = lista_pecas.size();
-    resultado.comprimento_grid = comprimento_final_grid;
-    resultado.comprimento_real = comprimento_final_grid / ESCALA;
+    
+    // Atualiza com o valor final encontrado pelo método Exato
+    resultado.comprimento_grid = melhor_comprimento_global;
+    resultado.comprimento_real = melhor_comprimento_global / ESCALA;
     resultado.eficiencia = static_cast<double>(area_total_ocupada_pelas_pecas) /
-                           (static_cast<double>(largura_folha_grid) * comprimento_final_grid) * 100.0;
+                           (static_cast<double>(largura_folha_grid) * melhor_comprimento_global) * 100.0;
     resultado.tempo_ms = std::chrono::duration<double, std::milli>(fim - inicio).count();
+    resultado.lb = lb;
+    resultado.ub = ub;
+    resultado.parou_no_lb = (melhor_comprimento_global == lb);
 
-    const std::string nome_ppm = dir_saida + "/layout_" + nome + ".ppm";
-    if (!exportar_ppm(folha, comprimento_final_grid, nome_ppm)) return false;
+    // 6. Exportar layout exato
+    const std::string nome_ppm = dir_saida + "/layout_exato_" + nome + ".ppm";
+    if (!exportar_ppm(melhor_folha, melhor_comprimento_global, nome_ppm)) return false;
     converter_ppm_para_png(nome_ppm, dir_saida);
     return true;
 }
@@ -100,15 +154,17 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
 std::string tabela_markdown(const std::vector<Resultado>& resultados) {
     std::ostringstream md;
     md << std::fixed;
-    md << "| Instancia | Escala | Largura da folha | Total de pecas alocadas | Comprimento na grelha"
-          " | Comprimento real (C_L) | Eficiencia do layout | Tempo de execucao |\n";
-    md << "|---|---:|---:|---:|---:|---:|---:|---:|\n";
+    md << "| Instancia | Escala | Largura da folha | Total de pecas alocadas | Comprimento na grelha | LB | UB heuristica | Parada | Comprimento real (C_L) | Eficiencia do layout | Tempo de execucao |\n";
+    md << "|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|\n";
     for (const auto& r : resultados) {
         md << "| " << r.instancia
            << " | " << std::defaultfloat << std::setprecision(6) << r.escala
            << " | " << r.largura_folha_real << std::fixed
            << " | " << r.total_pecas
            << " | " << r.comprimento_grid << " celulas"
+           << " | " << r.lb
+           << " | " << r.ub
+           << " | " << (r.parou_no_lb ? "LB atingido" : "busca completa")
            << " | " << std::setprecision(2) << r.comprimento_real
            << " | " << std::setprecision(2) << r.eficiencia << "%"
            << " | " << std::setprecision(3) << r.tempo_ms << " ms |\n";
@@ -149,23 +205,25 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        std::cout << "Executando " << nome << "..." << std::endl;
+        std::cout << "Executando " << nome << "... ";
         Resultado r;
         if (executar_instancia(caminho.string(), nome, it->second, dir_saida, r)) {
+            std::cout << "Concluido em " << std::fixed << std::setprecision(2) << (r.tempo_ms / 1000.0) << "s." << std::endl;
             resultados.push_back(r);
         } else {
+            std::cout << "Falha na execucao." << std::endl;
             houve_erro = true;
         }
     }
 
     const std::string tabela = tabela_markdown(resultados);
-    std::cout << "\n=== RESULTADO DO EMPACOTAMENTO ===\n\n" << tabela << std::endl;
+    std::cout << "\n=== RESULTADO DO EMPACOTAMENTO EXATO ===\n\n" << tabela << std::endl;
 
     const std::string caminho_md = dir_saida + "/resultados.md";
     std::filesystem::create_directories(dir_saida, ec);
     std::ofstream md(caminho_md);
     if (md.is_open()) {
-        md << "# Resultados do empacotamento\n\n" << tabela;
+        md << "# Resultados do empacotamento exato\n\n" << tabela;
         std::cout << "Tabela salva em " << caminho_md << std::endl;
     } else {
         std::cerr << "Erro ao criar " << caminho_md << std::endl;
