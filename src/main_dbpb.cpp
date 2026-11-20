@@ -126,7 +126,7 @@ bool executar_instancia(const std::string& caminho, const std::string& nome,
     const int melhor_comprimento_global = melhor.load();
 
     const auto fim = std::chrono::steady_clock::now();
-    std::cout << std::endl; // Garante quebra de linha após a conclusão
+    std::cout << std::endl; 
 
     // 5. Resultados
     resultado.instancia = nome;
