@@ -1,7 +1,5 @@
 dataset = ./dataset
 
 # Instância = <Escala> <Largura_folha_real>
-
-shapes      = 10    40
-swim        = 0.1   5752
-blaz        = 10    15
+a_simples = 10  12
+shirts_adapted = 10  32
