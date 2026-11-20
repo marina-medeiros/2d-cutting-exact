@@ -7,10 +7,6 @@ A lógica principal do algoritmo de empacotamento (Branch and Bound) está imple
 
 O relatório completo está em `relatorio.pdf`.
 
-## Instâncias 
-
-Os casos de teste na pasta `dataset/` incluem instâncias adaptadas do repositório oficial do grupo [ESICUP (EURO Special Interest Group on Cutting and Packing)](https://github.com/ESICUP/datasets), além de instâncias sintéticas geradas para validação.
-
 ## Requisitos
 
 - CMake 3.10+
